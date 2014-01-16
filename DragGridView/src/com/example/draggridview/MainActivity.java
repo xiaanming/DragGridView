@@ -7,7 +7,12 @@ import java.util.List;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 
 import com.example.draggridview.DragGridView.OnChanageListener;
 
@@ -33,22 +38,15 @@ public class MainActivity extends Activity {
 			dataSourceList.add(itemHashMap);
 		}
 		
-
-		final SimpleAdapter mSimpleAdapter = new SimpleAdapter(this, dataSourceList,
-				R.layout.grid_item, new String[] { "item_image", "item_text" },
-				new int[] { R.id.item_image, R.id.item_text });
+		final DragAdapter mDragAdapter = new DragAdapter(this, dataSourceList);
 		
-		mDragGridView.setAdapter(mSimpleAdapter);
+		mDragGridView.setAdapter(mDragAdapter);
 		
 		mDragGridView.setOnChangeListener(new OnChanageListener() {
 			
 			@Override
 			public void onChange(int from, int to) {
 				HashMap<String, Object> temp = dataSourceList.get(from);
-				//直接交互item
-//				dataSourceList.set(from, dataSourceList.get(to));
-//				dataSourceList.set(to, temp);
-				
 				
 				//这里的处理需要注意下
 				if(from < to){
@@ -63,12 +61,13 @@ public class MainActivity extends Activity {
 				
 				dataSourceList.set(to, temp);
 				
-				mSimpleAdapter.notifyDataSetChanged();
-				
+				//设置新到的item隐藏，不用调用notifyDataSetChanged来刷新界面，因为setItemHide方法里面调用了
+				mDragAdapter.setItemHide(to);
 				
 			}
 		});
 		
 	}
+	
 
 }

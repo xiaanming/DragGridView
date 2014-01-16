@@ -1,6 +1,5 @@
 package com.example.draggridview;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -23,7 +22,6 @@ import android.widget.ImageView;
  * @author xiaanming
  *
  */
-@SuppressLint("NewApi")
 public class DragGridView extends GridView{
 	/**
 	 * DragGridView的item长按响应的时间， 默认是1000毫秒，也可以自行设置
@@ -108,7 +106,7 @@ public class DragGridView extends GridView{
 	/**
 	 * DragGridView自动滚动的速度
 	 */
-	private static final int speed = 80;
+	private static final int speed = 20;
 	
 	/**
 	 * item发生变化回调的接口
@@ -130,6 +128,7 @@ public class DragGridView extends GridView{
 		mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
 		mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 		mStatusHeight = getStatusHeight(context); //获取状态栏的高度
+		
 	}
 	
 	private Handler mHandler = new Handler();
@@ -331,10 +330,10 @@ public class DragGridView extends GridView{
 		public void run() {
 			int scrollY;
 			if(moveY > mUpScrollBorder){
-				 scrollY = -speed;
+				 scrollY = speed;
 				 mHandler.postDelayed(mScrollRunnable, 25);
 			}else if(moveY < mDownScrollBorder){
-				scrollY = speed;
+				scrollY = -speed;
 				 mHandler.postDelayed(mScrollRunnable, 25);
 			}else{
 				scrollY = 0;
@@ -345,9 +344,8 @@ public class DragGridView extends GridView{
 			//所以我们在这里调用下onSwapItem()方法来交换item
 			onSwapItem(moveX, moveY);
 			
-			View view = getChildAt(mDragPosition - getFirstVisiblePosition());
-			//实现GridView的自动滚动
-			smoothScrollToPositionFromTop(mDragPosition, view.getTop() + scrollY);
+			
+			smoothScrollBy(scrollY, 10);
 		}
 	};
 	
@@ -363,12 +361,12 @@ public class DragGridView extends GridView{
 		
 		//假如tempPosition 改变了并且tempPosition不等于-1,则进行交换
 		if(tempPosition != mDragPosition && tempPosition != AdapterView.INVALID_POSITION){
-			getChildAt(tempPosition - getFirstVisiblePosition()).setVisibility(View.INVISIBLE);//拖动到了新的item,新的item隐藏掉
-			getChildAt(mDragPosition - getFirstVisiblePosition()).setVisibility(View.VISIBLE);//之前的item显示出来
-			
 			if(onChanageListener != null){
 				onChanageListener.onChange(mDragPosition, tempPosition);
 			}
+			
+			getChildAt(tempPosition - getFirstVisiblePosition()).setVisibility(View.INVISIBLE);//拖动到了新的item,新的item隐藏掉
+			getChildAt(mDragPosition - getFirstVisiblePosition()).setVisibility(View.VISIBLE);//之前的item显示出来
 			
 			mDragPosition = tempPosition;
 		}
@@ -379,7 +377,10 @@ public class DragGridView extends GridView{
 	 * 停止拖拽我们将之前隐藏的item显示出来，并将镜像移除
 	 */
 	private void onStopDrag(){
-		getChildAt(mDragPosition - getFirstVisiblePosition()).setVisibility(View.VISIBLE);
+		View view = getChildAt(mDragPosition - getFirstVisiblePosition());
+		if(view != null){
+			view.setVisibility(View.VISIBLE);
+		}
 		removeDragImage();
 	}
 	
