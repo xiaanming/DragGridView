@@ -167,18 +167,19 @@ public class DragGridView extends GridView{
 	public boolean dispatchTouchEvent(MotionEvent ev) {
 		switch(ev.getAction()){
 		case MotionEvent.ACTION_DOWN:
-			//使用Handler延迟dragResponseMS执行mLongClickRunnable
-			mHandler.postDelayed(mLongClickRunnable, dragResponseMS);
-			
 			mDownX = (int) ev.getX();
 			mDownY = (int) ev.getY();
 			
 			//根据按下的X,Y坐标获取所点击item的position
 			mDragPosition = pointToPosition(mDownX, mDownY);
 			
+			
 			if(mDragPosition == AdapterView.INVALID_POSITION){
 				return super.dispatchTouchEvent(ev);
 			}
+			
+			//使用Handler延迟dragResponseMS执行mLongClickRunnable
+			mHandler.postDelayed(mLongClickRunnable, dragResponseMS);
 			
 			//根据position获取该item所对应的View
 			mStartDragItemView = getChildAt(mDragPosition - getFirstVisiblePosition());
@@ -232,6 +233,9 @@ public class DragGridView extends GridView{
 	 * @return
 	 */
 	private boolean isTouchInItem(View dragView, int x, int y){
+		if(dragView == null){
+			return false;
+		}
 		int leftOffset = dragView.getLeft();
 		int topOffset = dragView.getTop();
 		if(x < leftOffset || x > leftOffset + dragView.getWidth()){
@@ -381,6 +385,7 @@ public class DragGridView extends GridView{
 		if(view != null){
 			view.setVisibility(View.VISIBLE);
 		}
+		((DragAdapter)this.getAdapter()).setItemHide(-1);
 		removeDragImage();
 	}
 	
