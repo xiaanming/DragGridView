@@ -29,6 +29,8 @@ import com.nineoldandroids.animation.AnimatorSet;
 import com.nineoldandroids.animation.ObjectAnimator;
 
 /**
+ * 可拖拽的GridView, 添加Item的交换效果
+ * 
  * @blog http://blog.csdn.net/xiaanming 
  * 
  * @author xiaanming
@@ -119,15 +121,26 @@ public class DragGridView extends GridView{
 	 * DragGridView自动滚动的速度
 	 */
 	private static final int speed = 20;
-	
+	/**
+	 * item的移动动画是否结束
+	 */
 	private boolean mAnimationEnd = true;
 	
 	private DragGridBaseAdapter mDragAdapter;
+	/**
+	 * GridView的列数
+	 */
 	private int mNumColumns;
+	/**
+	 * 当GridView的numColumns设置为AUTO_FIT，我们需要计算GirdView具体的列数
+	 */
 	private int mColumnWidth;
+	/**
+	 * GridView是否设置了numColumns为具体的数字
+	 */
 	private boolean mNumColumnsSet;
 	private int mHorizontalSpacing;
-	
+	private int mVerticalSpacing;
 	
 	public DragGridView(Context context) {
 		this(context, null);
@@ -147,6 +160,24 @@ public class DragGridView extends GridView{
 			mNumColumns = AUTO_FIT;
 		}
 		
+	}
+	
+	/**
+	 * 删除item的动画效果
+	 * @param position
+	 */
+	public void removeItemAnimation(final int position){
+		mDragAdapter.removeItem(position);
+		final ViewTreeObserver observer = getViewTreeObserver();
+		observer.addOnPreDrawListener(new OnPreDrawListener() {
+			
+			@Override
+			public boolean onPreDraw() {
+				observer.removeOnPreDrawListener(this);
+				animateReorder(position, getLastVisiblePosition() + 1 );
+				return true;
+			}
+		} );
 	}
 	
 	private Handler mHandler = new Handler();
@@ -177,7 +208,9 @@ public class DragGridView extends GridView{
 		}
 	}
 	
-
+	/**
+	 * 获取列数
+	 */
 	@Override
 	public void setNumColumns(int numColumns) {
 		super.setNumColumns(numColumns);
@@ -185,23 +218,36 @@ public class DragGridView extends GridView{
 		this.mNumColumns = numColumns;
 	}
 	
-	
+	/**
+	 * 获取设置的列宽
+	 */
 	@Override
 	public void setColumnWidth(int columnWidth) {
 	    super.setColumnWidth(columnWidth);
 	    mColumnWidth = columnWidth;
 	}
 	
-	
+	/**
+	 * 获取水平方向的间隙
+	 */
     @Override
 	public void setHorizontalSpacing(int horizontalSpacing) {
 		super.setHorizontalSpacing(horizontalSpacing);
 		this.mHorizontalSpacing = horizontalSpacing;
 	}
     
-
+    
     /**
-     * 若设置为AUTO_FIT，计算有多少列
+     * 获取竖直方向的间隙
+     */
+	@Override
+	public void setVerticalSpacing(int verticalSpacing) {
+		super.setVerticalSpacing(verticalSpacing);
+		this.mVerticalSpacing = verticalSpacing;
+	}
+
+	/**
+     * 若列数设置为AUTO_FIT，我们在这里面计算具体的列数
      */
 	@Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -274,14 +320,12 @@ public class DragGridView extends GridView{
 			mUpScrollBorder = getHeight() * 4/5;
 			
 			
-			
 			//开启mDragItemView绘图缓存
 			mStartDragItemView.setDrawingCacheEnabled(true);
 			//获取mDragItemView在缓存中的Bitmap对象
 			mDragBitmap = Bitmap.createBitmap(mStartDragItemView.getDrawingCache());
 			//这一步很关键，释放绘图缓存，避免出现重复的镜像
 			mStartDragItemView.destroyDrawingCache();
-			
 			
 			break;
 		case MotionEvent.ACTION_MOVE:
@@ -411,7 +455,7 @@ public class DragGridView extends GridView{
 		@Override
 		public void run() {
 			int scrollY;
-			if(getFirstVisiblePosition() == 0 || getLastVisiblePosition() == getAdapter().getCount() - 1){
+			if(getFirstVisiblePosition() == 0 || getLastVisiblePosition() == getCount() - 1){
 				mHandler.removeCallbacks(mScrollRunnable);
 			}
 			
@@ -442,7 +486,13 @@ public class DragGridView extends GridView{
 		
 		//假如tempPosition 改变了并且tempPosition不等于-1,则进行交换
 		if(tempPosition != mDragPosition && tempPosition != AdapterView.INVALID_POSITION && mAnimationEnd){
+			/**
+			 * 交换item
+			 */
 			mDragAdapter.reorderItems(mDragPosition, tempPosition);
+			/**
+			 * 设置新到的位置隐藏
+			 */
 			mDragAdapter.setHideItem(tempPosition);
 			
 			final ViewTreeObserver observer = getViewTreeObserver();
@@ -479,7 +529,7 @@ public class DragGridView extends GridView{
 		animSetXY.playTogether(animX, animY);
 		return animSetXY;
 	}
-
+	
 	
 	/**
 	 * item的交换动画效果
@@ -494,23 +544,23 @@ public class DragGridView extends GridView{
 				View view = getChildAt(pos - getFirstVisiblePosition());
 				if ((pos + 1) % mNumColumns == 0) {
 					resultList.add(createTranslationAnimations(view,
-							- view.getWidth() * (mNumColumns - 1), 0,
-							view.getHeight(), 0));
+							- (view.getWidth() + mHorizontalSpacing) * (mNumColumns - 1), 0,
+							view.getHeight() + mVerticalSpacing, 0));
 				} else {
 					resultList.add(createTranslationAnimations(view,
-							view.getWidth(), 0, 0, 0));
+							view.getWidth() + mHorizontalSpacing, 0, 0, 0));
 				}
 			}
 		} else {
 			for (int pos = oldPosition; pos > newPosition; pos--) {
 				View view = getChildAt(pos - getFirstVisiblePosition());
-				if ((pos + mNumColumns) % mNumColumns == 0) {
+				if ((pos) % mNumColumns == 0) {
 					resultList.add(createTranslationAnimations(view,
-							view.getWidth() * (mNumColumns - 1), 0,
-							-view.getHeight(), 0));
+							(view.getWidth() + mHorizontalSpacing) * (mNumColumns - 1), 0,
+							-view.getHeight() - mVerticalSpacing, 0));
 				} else {
 					resultList.add(createTranslationAnimations(view,
-							-view.getWidth(), 0, 0, 0));
+							-view.getWidth() - mHorizontalSpacing, 0, 0, 0));
 				}
 			}
 		}

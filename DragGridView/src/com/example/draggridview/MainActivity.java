@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.example.framework.DragGridView;
-
 import android.app.Activity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+
+import com.example.framework.DragGridView;
 
 /**
  * @blog http://blog.csdn.net/xiaanming 
@@ -23,7 +26,7 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		DragGridView mDragGridView = (DragGridView) findViewById(R.id.dragGridView);
+		final DragGridView mDragGridView = (DragGridView) findViewById(R.id.dragGridView);
 		for (int i = 0; i < 15; i++) {
 			HashMap<String, Object> itemHashMap = new HashMap<String, Object>();
 			itemHashMap.put("item_image",R.drawable.com_tencent_open_notice_msg_icon_big);
@@ -34,6 +37,16 @@ public class MainActivity extends Activity {
 		final DragAdapter mDragAdapter = new DragAdapter(this, dataSourceList);
 		
 		mDragGridView.setAdapter(mDragAdapter);
+		
+		
+		mDragGridView.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view,
+					int position, long id) {
+				mDragGridView.removeItemAnimation(position);
+			}
+		});
 	}
 	
 

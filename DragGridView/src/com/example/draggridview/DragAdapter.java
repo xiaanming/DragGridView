@@ -86,5 +86,12 @@ public class DragAdapter extends BaseAdapter implements DragGridBaseAdapter{
 		notifyDataSetChanged();
 	}
 
+	@Override
+	public void removeItem(int removePosition) {
+		list.remove(removePosition);
+		notifyDataSetChanged();
+		
+	}
+
 
 }

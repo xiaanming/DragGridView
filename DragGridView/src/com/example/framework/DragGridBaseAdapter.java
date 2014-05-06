@@ -15,5 +15,11 @@ public interface DragGridBaseAdapter {
 	 */
 	public void setHideItem(int hidePosition);
 	
+	/**
+	 * É¾³ýÄ³¸öitem
+	 * @param removePosition
+	 */
+	public void removeItem(int removePosition);
+	
 
 }
