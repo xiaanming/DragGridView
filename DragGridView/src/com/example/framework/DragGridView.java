@@ -1,4 +1,7 @@
-package com.example.draggridview;
+package com.example.framework;
+
+import java.util.LinkedList;
+import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
@@ -11,10 +14,19 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.ViewTreeObserver.OnPreDrawListener;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.ListAdapter;
+
+import com.nineoldandroids.animation.Animator;
+import com.nineoldandroids.animation.AnimatorListenerAdapter;
+import com.nineoldandroids.animation.AnimatorSet;
+import com.nineoldandroids.animation.ObjectAnimator;
 
 /**
  * @blog http://blog.csdn.net/xiaanming 
@@ -108,11 +120,13 @@ public class DragGridView extends GridView{
 	 */
 	private static final int speed = 20;
 	
-	/**
-	 * item发生变化回调的接口
-	 */
-	private OnChanageListener onChanageListener;
+	private boolean mAnimationEnd = true;
 	
+	private DragGridBaseAdapter mDragAdapter;
+	private int mNumColumns;
+	private int mColumnWidth;
+	private boolean mNumColumnsSet;
+	private int mHorizontalSpacing;
 	
 	
 	public DragGridView(Context context) {
@@ -128,6 +142,10 @@ public class DragGridView extends GridView{
 		mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
 		mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
 		mStatusHeight = getStatusHeight(context); //获取状态栏的高度
+		
+		if(!mNumColumnsSet){
+			mNumColumns = AUTO_FIT;
+		}
 		
 	}
 	
@@ -147,13 +165,72 @@ public class DragGridView extends GridView{
 		}
 	};
 	
-	/**
-	 * 设置回调接口
-	 * @param onChanageListener
-	 */
-	public void setOnChangeListener(OnChanageListener onChanageListener){
-		this.onChanageListener = onChanageListener;
+	
+	@Override
+	public void setAdapter(ListAdapter adapter) {
+		super.setAdapter(adapter);
+		
+		if(adapter instanceof DragGridBaseAdapter){
+			mDragAdapter = (DragGridBaseAdapter) adapter;
+		}else{
+			throw new IllegalStateException("the adapter must be implements DragGridAdapter");
+		}
 	}
+	
+
+	@Override
+	public void setNumColumns(int numColumns) {
+		super.setNumColumns(numColumns);
+		mNumColumnsSet = true;
+		this.mNumColumns = numColumns;
+	}
+	
+	
+	@Override
+	public void setColumnWidth(int columnWidth) {
+	    super.setColumnWidth(columnWidth);
+	    mColumnWidth = columnWidth;
+	}
+	
+	
+    @Override
+	public void setHorizontalSpacing(int horizontalSpacing) {
+		super.setHorizontalSpacing(horizontalSpacing);
+		this.mHorizontalSpacing = horizontalSpacing;
+	}
+    
+
+    /**
+     * 若设置为AUTO_FIT，计算有多少列
+     */
+	@Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (mNumColumns == AUTO_FIT) {
+            int numFittedColumns;
+            if (mColumnWidth > 0) {
+                int gridWidth = Math.max(MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft()
+                        - getPaddingRight(), 0);
+                numFittedColumns = gridWidth / mColumnWidth;
+                if (numFittedColumns > 0) {
+                    while (numFittedColumns != 1) {
+                        if (numFittedColumns * mColumnWidth + (numFittedColumns - 1)
+                                * mHorizontalSpacing > gridWidth) {
+                            numFittedColumns--;
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    numFittedColumns = 1;
+                }
+            } else {
+                numFittedColumns = 2;
+            }
+            mNumColumns = numFittedColumns;
+        } 
+
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
 	
 	/**
 	 * 设置响应拖拽的毫秒数，默认是1000毫秒
@@ -192,9 +269,9 @@ public class DragGridView extends GridView{
 			mOffset2Left = (int) (ev.getRawX() - mDownX);
 			
 			//获取DragGridView自动向上滚动的偏移量，小于这个值，DragGridView向下滚动
-			mDownScrollBorder = getHeight() /4;
+			mDownScrollBorder = getHeight() / 5;
 			//获取DragGridView自动向下滚动的偏移量，大于这个值，DragGridView向上滚动
-			mUpScrollBorder = getHeight() * 3/4;
+			mUpScrollBorder = getHeight() * 4/5;
 			
 			
 			
@@ -258,6 +335,7 @@ public class DragGridView extends GridView{
 			case MotionEvent.ACTION_MOVE:
 				moveX = (int) ev.getX();
 				moveY = (int) ev.getY();
+				
 				//拖动item
 				onDragItem(moveX, moveY);
 				break;
@@ -325,7 +403,7 @@ public class DragGridView extends GridView{
 	
 	/**
 	 * 当moveY的值大于向上滚动的边界值，触发GridView自动向上滚动
-	 * 当moveY的值小于向下滚动的边界值，触犯GridView自动向下滚动
+	 * 当moveY的值小于向下滚动的边界值，触发GridView自动向下滚动
 	 * 否则不进行滚动
 	 */
 	private Runnable mScrollRunnable = new Runnable() {
@@ -333,6 +411,10 @@ public class DragGridView extends GridView{
 		@Override
 		public void run() {
 			int scrollY;
+			if(getFirstVisiblePosition() == 0 || getLastVisiblePosition() == getAdapter().getCount() - 1){
+				mHandler.removeCallbacks(mScrollRunnable);
+			}
+			
 			if(moveY > mUpScrollBorder){
 				 scrollY = speed;
 				 mHandler.postDelayed(mScrollRunnable, 25);
@@ -343,11 +425,6 @@ public class DragGridView extends GridView{
 				scrollY = 0;
 				mHandler.removeCallbacks(mScrollRunnable);
 			}
-			
-			//当我们的手指到达GridView向上或者向下滚动的偏移量的时候，可能我们手指没有移动，但是DragGridView在自动的滚动
-			//所以我们在这里调用下onSwapItem()方法来交换item
-			onSwapItem(moveX, moveY);
-			
 			
 			smoothScrollBy(scrollY, 10);
 		}
@@ -361,21 +438,100 @@ public class DragGridView extends GridView{
 	 */
 	private void onSwapItem(int moveX, int moveY){
 		//获取我们手指移动到的那个item的position
-		int tempPosition = pointToPosition(moveX, moveY);
+		final int tempPosition = pointToPosition(moveX, moveY);
 		
 		//假如tempPosition 改变了并且tempPosition不等于-1,则进行交换
-		if(tempPosition != mDragPosition && tempPosition != AdapterView.INVALID_POSITION){
-			if(onChanageListener != null){
-				onChanageListener.onChange(mDragPosition, tempPosition);
-			}
+		if(tempPosition != mDragPosition && tempPosition != AdapterView.INVALID_POSITION && mAnimationEnd){
+			mDragAdapter.reorderItems(mDragPosition, tempPosition);
+			mDragAdapter.setHideItem(tempPosition);
 			
-			getChildAt(tempPosition - getFirstVisiblePosition()).setVisibility(View.INVISIBLE);//拖动到了新的item,新的item隐藏掉
-			getChildAt(mDragPosition - getFirstVisiblePosition()).setVisibility(View.VISIBLE);//之前的item显示出来
+			final ViewTreeObserver observer = getViewTreeObserver();
+			observer.addOnPreDrawListener(new OnPreDrawListener() {
+				
+				@Override
+				public boolean onPreDraw() {
+					observer.removeOnPreDrawListener(this);
+					animateReorder(mDragPosition, tempPosition);
+					mDragPosition = tempPosition;
+					return true;
+				}
+			} );
 			
-			mDragPosition = tempPosition;
 		}
 	}
 	
+	/**
+	 * 创建移动动画
+	 * @param view
+	 * @param startX
+	 * @param endX
+	 * @param startY
+	 * @param endY
+	 * @return
+	 */
+	private AnimatorSet createTranslationAnimations(View view, float startX,
+			float endX, float startY, float endY) {
+		ObjectAnimator animX = ObjectAnimator.ofFloat(view, "translationX",
+				startX, endX);
+		ObjectAnimator animY = ObjectAnimator.ofFloat(view, "translationY",
+				startY, endY);
+		AnimatorSet animSetXY = new AnimatorSet();
+		animSetXY.playTogether(animX, animY);
+		return animSetXY;
+	}
+
+	
+	/**
+	 * item的交换动画效果
+	 * @param oldPosition
+	 * @param newPosition
+	 */
+	private void animateReorder(final int oldPosition, final int newPosition) {
+		boolean isForward = newPosition > oldPosition;
+		List<Animator> resultList = new LinkedList<Animator>();
+		if (isForward) {
+			for (int pos = oldPosition; pos < newPosition; pos++) {
+				View view = getChildAt(pos - getFirstVisiblePosition());
+				if ((pos + 1) % mNumColumns == 0) {
+					resultList.add(createTranslationAnimations(view,
+							- view.getWidth() * (mNumColumns - 1), 0,
+							view.getHeight(), 0));
+				} else {
+					resultList.add(createTranslationAnimations(view,
+							view.getWidth(), 0, 0, 0));
+				}
+			}
+		} else {
+			for (int pos = oldPosition; pos > newPosition; pos--) {
+				View view = getChildAt(pos - getFirstVisiblePosition());
+				if ((pos + mNumColumns) % mNumColumns == 0) {
+					resultList.add(createTranslationAnimations(view,
+							view.getWidth() * (mNumColumns - 1), 0,
+							-view.getHeight(), 0));
+				} else {
+					resultList.add(createTranslationAnimations(view,
+							-view.getWidth(), 0, 0, 0));
+				}
+			}
+		}
+
+		AnimatorSet resultSet = new AnimatorSet();
+		resultSet.playTogether(resultList);
+		resultSet.setDuration(300);
+		resultSet.setInterpolator(new AccelerateDecelerateInterpolator());
+		resultSet.addListener(new AnimatorListenerAdapter() {
+			@Override
+			public void onAnimationStart(Animator animation) {
+				mAnimationEnd = false;
+			}
+
+			@Override
+			public void onAnimationEnd(Animator animation) {
+				mAnimationEnd = true;
+			}
+		});
+		resultSet.start();
+	}
 	
 	/**
 	 * 停止拖拽我们将之前隐藏的item显示出来，并将镜像移除
@@ -385,7 +541,7 @@ public class DragGridView extends GridView{
 		if(view != null){
 			view.setVisibility(View.VISIBLE);
 		}
-		((DragAdapter)this.getAdapter()).setItemHide(-1);
+		mDragAdapter.setHideItem(-1);
 		removeDragImage();
 	}
 	
@@ -412,22 +568,5 @@ public class DragGridView extends GridView{
         }
         return statusHeight;
     }
-
 	
-	/**
-	 * 
-	 * @author xiaanming
-	 *
-	 */
-	public interface OnChanageListener{
-		
-		/**
-		 * 当item交换位置的时候回调的方法，我们只需要在该方法中实现数据的交换即可
-		 * @param form
-		 * 			开始的position
-		 * @param to 
-		 * 			拖拽到的position
-		 */
-		public void onChange(int form, int to);
-	}
 }

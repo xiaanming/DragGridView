@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-    <com.example.draggridview.DragGridView
+    <com.example.framework.DragGridView
         android:id="@+id/dragGridView"
         android:listSelector="@android:color/transparent"
         android:layout_width="match_parent"
@@ -11,9 +11,9 @@
         android:cacheColorHint="@android:color/transparent"
         android:verticalSpacing="10dip"
         android:horizontalSpacing="10dip"
-        android:stretchMode="columnWidth"  
+        android:columnWidth="90dip"
   	    android:gravity="center" 
-        android:numColumns="3" >
-    </com.example.draggridview.DragGridView>
+        android:numColumns="auto_fit" >
+    </com.example.framework.DragGridView>
 
 </RelativeLayout>

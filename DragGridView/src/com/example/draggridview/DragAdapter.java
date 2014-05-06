@@ -1,7 +1,10 @@
 package com.example.draggridview;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+
+import com.example.framework.DragGridBaseAdapter;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -16,7 +19,7 @@ import android.widget.TextView;
  * @author xiaanming
  *
  */
-public class DragAdapter extends BaseAdapter{
+public class DragAdapter extends BaseAdapter implements DragGridBaseAdapter{
 	private List<HashMap<String, Object>> list;
 	private LayoutInflater mInflater;
 	private int mHidePosition = -1;
@@ -59,15 +62,29 @@ public class DragAdapter extends BaseAdapter{
 		
 		return convertView;
 	}
-
 	
-	/**
-	 * …Ë÷√ƒ≥œÓ“˛≤ÿ
-	 * @param position
-	 */
-	public void setItemHide(int position){
-		this.mHidePosition = position; 
+
+	@Override
+	public void reorderItems(int oldPosition, int newPosition) {
+		HashMap<String, Object> temp = list.get(oldPosition);
+		if(oldPosition < newPosition){
+			for(int i=oldPosition; i<newPosition; i++){
+				Collections.swap(list, i, i+1);
+			}
+		}else if(oldPosition > newPosition){
+			for(int i=oldPosition; i>newPosition; i--){
+				Collections.swap(list, i, i-1);
+			}
+		}
+		
+		list.set(newPosition, temp);
+	}
+
+	@Override
+	public void setHideItem(int hidePosition) {
+		this.mHidePosition = hidePosition; 
 		notifyDataSetChanged();
 	}
+
 
 }
